@@ -1,0 +1,9 @@
+# IDEs
+.vscode/
+.idea/
+
+# Temporary files
+tmp/
+
+# Build files
+couchgo

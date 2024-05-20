@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  couchdb:
+    build: "./couchdb"
+    environment:
+      COUCHDB_USER: "admin"
+      COUCHDB_PASSWORD: "admin"
+      COUCHDB_SECRET: "secret"
+      COUCHDB_BIND_ADDRESS: "0.0.0.0"
+      COUCHDB_PORT_NUMBER: "5984"
+    ports:
+      - "5984:5984"
+    volumes:
+      - "couchdb-data:/bitnami/couchdb"
+      - "./couchdb/10-config.ini:/opt/bitnami/couchdb/etc/local.d/10-config.ini"
+    networks:
+      - "couchdb-network"
+
+networks:
+  couchdb-network:
+    driver: "bridge"
+
+volumes:
+  couchdb-data:
+    driver: "local"
