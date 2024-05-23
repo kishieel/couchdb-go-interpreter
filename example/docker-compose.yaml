@@ -2,18 +2,20 @@ version: "3.9"
 
 services:
   couchdb:
-    build: "./couchdb"
+    image: "bitnami/couchdb:3.3.3"
     environment:
       COUCHDB_USER: "admin"
       COUCHDB_PASSWORD: "admin"
       COUCHDB_SECRET: "secret"
       COUCHDB_BIND_ADDRESS: "0.0.0.0"
       COUCHDB_PORT_NUMBER: "5984"
+      COUCHDB_QUERY_SERVER_GO: "/opt/bitnami/couchdb/bin/couchgo"
     ports:
       - "5984:5984"
     volumes:
       - "couchdb-data:/bitnami/couchdb"
-      - "./couchdb/10-config.ini:/opt/bitnami/couchdb/etc/local.d/10-config.ini"
+      - "../bin/couchgo:/opt/bitnami/couchdb/bin/couchgo"
+      - "./main.js:/opt/bitnami/couchdb/share/server/main.js"
     networks:
       - "couchdb-network"
 
