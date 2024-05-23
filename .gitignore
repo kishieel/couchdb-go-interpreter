@@ -6,7 +6,3 @@
 tmp/
 example/*
 !example/docker-compose.yaml
-
-# Build files
-couchgo
-
