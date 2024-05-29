@@ -1,18 +1,35 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/traefik/yaegi/interp"
+	"reflect"
 )
 
-func Emit(key any, value any) {
-	Emitted = append(Emitted, []any{key, value})
-}
+var Sandbox = interp.Exports{}
 
-func Log(message any) {
-	if buf, err := json.Marshal(message); err != nil {
-		Respond([]string{"log", fmt.Sprintf("Failed to marshal message: %v", err)})
-	} else {
-		Respond([]string{"log", string(buf)})
+func init() {
+	Sandbox["couchgo/couchgo"] = map[string]reflect.Value{
+		"Log":                 reflect.ValueOf(Log),
+		"DatabaseInformation": reflect.ValueOf((*DatabaseInformation)(nil)),
+		"Document":            reflect.ValueOf((*Document)(nil)),
+		"Request":             reflect.ValueOf((*Request)(nil)),
+		"SecurityObject":      reflect.ValueOf((*SecurityObject)(nil)),
+		"UserContext":         reflect.ValueOf((*UserContext)(nil)),
+		"ForbiddenError":      reflect.ValueOf((*ForbiddenError)(nil)),
+		"UnauthorizedError":   reflect.ValueOf((*UnauthorizedError)(nil)),
+		"MapInput":            reflect.ValueOf((*MapInput)(nil)),
+		"MapOutput":           reflect.ValueOf((*MapOutput)(nil)),
+		"ReduceInput":         reflect.ValueOf((*ReduceInput)(nil)),
+		"ReduceOutput":        reflect.ValueOf((*ReduceOutput)(nil)),
+		"UpdateInput":         reflect.ValueOf((*UpdateInput)(nil)),
+		"UpdateOutput":        reflect.ValueOf((*UpdateOutput)(nil)),
+		"FilterInput":         reflect.ValueOf((*FilterInput)(nil)),
+		"FilterOutput":        reflect.ValueOf((*FilterOutput)(nil)),
+		"ViewInput":           reflect.ValueOf((*ViewInput)(nil)),
+		"ViewOutput":          reflect.ValueOf((*ViewOutput)(nil)),
+		"ValidateInput":       reflect.ValueOf((*ValidateInput)(nil)),
+		"ValidateOutput":      reflect.ValueOf((*ValidateOutput)(nil)),
+		"RewriteInput":        reflect.ValueOf((*RewriteInput)(nil)),
+		"RewriteOutput":       reflect.ValueOf((*RewriteOutput)(nil)),
 	}
 }

@@ -15,7 +15,6 @@ services:
     volumes:
       - "couchdb-data:/bitnami/couchdb"
       - "../bin/couchgo:/opt/bitnami/couchdb/bin/couchgo"
-      - "./main.js:/opt/bitnami/couchdb/share/server/main.js"
     networks:
       - "couchdb-network"
 

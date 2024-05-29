@@ -3,55 +3,115 @@ package main
 type Document = map[string]any
 
 type DatabaseInformation struct {
-	dbName             string
-	committedUpdateSeq int
-	docCount           int
-	docDelCount        int
-	compactRunning     bool
-	diskFormatVersion  int
-	diskSize           int
-	instanceStartTime  string
-	purgeSeq           int
-	updateSeq          int
+	DBName             string
+	CommittedUpdateSeq int
+	DocCount           int
+	DocDelCount        int
+	CompactRunning     bool
+	DiskFormatVersion  int
+	DiskSize           int
+	InstanceStartTime  string
+	PurgeSeq           int
+	UpdateSeq          int
 }
 
 type SecurityObject struct {
-	admins struct {
-		names []string
-		roles []string
+	Admins struct {
+		Names []string
+		Roles []string
 	}
-	members struct {
-		names []string
-		roles []string
+	Members struct {
+		Names []string
+		Roles []string
 	}
 }
 
 type UserContext struct {
-	db    string
-	name  string
-	roles []string
+	DB    string
+	Name  string
+	Roles []string
 }
 
 type Request struct {
-	body          string
-	cookie        map[string]string
-	form          map[string]string
-	headers       map[string]string
-	id            string
-	info          DatabaseInformation
-	method        string
-	path          []string
-	rawPath       string
-	requestedPath []string
-	peer          string
-	query         map[string]string
-	secObj        SecurityObject
-	userCtx       UserContext
-	uuid          string
+	Body          string
+	Cookie        map[string]string
+	Form          map[string]string
+	Headers       map[string]string
+	ID            string
+	Info          DatabaseInformation
+	Method        string
+	Path          []string
+	RawPath       string
+	RequestedPath []string
+	Peer          string
+	Query         map[string]string
+	SecObj        SecurityObject
+	UserCtx       UserContext
+	Uuid          string
 }
 
-type MapFunction = func(doc Document)
-type ReduceFunction = func(keys []any, values []any, rereduce bool) any
-type UpdateFunction = func(doc Document, req Request) any
-type FilterFunction = func(doc Document, req Request) bool
-type ValidateFunction = func(newDoc Document, oldDoc Document, userCtx UserContext, secObj SecurityObject) bool
+type MapInput struct{ Doc Document }
+
+type MapOutput [][2]any
+
+type ReduceInput struct {
+	Keys     []any
+	Values   []any
+	Rereduce bool
+}
+
+type ReduceOutput any
+
+type UpdateInput struct {
+	Doc Document
+	Req Request
+}
+
+type UpdateOutput struct {
+	Doc Document
+	Res any
+}
+
+type FilterInput struct {
+	Doc Document
+	Req Request
+}
+
+type FilterOutput bool
+
+type ViewInput struct {
+	Doc Document
+	Req Request
+}
+
+type ViewOutput [][2]any
+
+type ValidateInput struct {
+	NewDoc  Document
+	OldDoc  Document
+	UserCtx UserContext
+	SecObj  SecurityObject
+}
+
+type ValidateOutput error
+
+type RewriteInput struct {
+	Req Request
+}
+
+type RewriteOutput struct {
+	Path    string
+	Query   []string
+	Headers map[string]string
+	Method  string
+	Body    string
+	Code    int
+}
+
+type MapFunction = func(MapInput) MapOutput
+type ReduceFunction = func(ReduceInput) ReduceOutput
+type UpdateFunction = func(UpdateInput) UpdateOutput
+type FilterFunction = func(FilterInput) FilterOutput
+type ViewFunction = func(ViewInput) ViewOutput
+type ValidateFunction = func(ValidateInput) ValidateOutput
+type RewriteFunction = func(RewriteInput) RewriteOutput

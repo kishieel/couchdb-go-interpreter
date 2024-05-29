@@ -8,15 +8,23 @@ import (
 	"strings"
 )
 
-const (
-	MapPrefix      = "func Map"
-	ReducePrefix   = "func Reduce"
-	UpdatePrefix   = "func Update"
-	FilterPrefix   = "func Filter"
-	ValidatePrefix = "func Validate"
-)
+var FunctionNames = []string{
+	"Map",
+	"Reduce",
+	"Update",
+	"Filter",
+	"View",
+	"Validate",
+	"Rewrite",
+}
 
-var Emitted [][]any
+func Log(message any) {
+	if buf, err := json.Marshal(message); err != nil {
+		Respond([]string{"log", fmt.Sprintf("Failed to marshal message: %v", err)})
+	} else {
+		Respond([]string{"log", string(buf)})
+	}
+}
 
 func Respond(message any) {
 	if buf, err := json.Marshal(message); err != nil {
@@ -32,25 +40,9 @@ func Compile[T any](source string) (T, error) {
 
 	inter := interp.New(interp.Options{})
 
-	symbols := interp.Exports{
-		"couchgo/couchgo": {
-			// function, constant and variable definitions
-			"Emit": reflect.ValueOf(Emit),
-			"Log":  reflect.ValueOf(Log),
-
-			// function, constant and variable definitions
-			"DatabaseInformation": reflect.ValueOf((*DatabaseInformation)(nil)),
-			"Document":            reflect.ValueOf((*Document)(nil)),
-			"Request":             reflect.ValueOf((*Request)(nil)),
-			"SecurityObject":      reflect.ValueOf((*SecurityObject)(nil)),
-			"UserContext":         reflect.ValueOf((*UserContext)(nil)),
-		},
-	}
-
-	if err := inter.Use(symbols); err != nil {
+	if err := inter.Use(Sandbox); err != nil {
 		return fn, err
 	}
-
 	inter.ImportUsed()
 
 	if _, err := inter.Eval(source); err != nil {
@@ -60,17 +52,11 @@ func Compile[T any](source string) (T, error) {
 	var val reflect.Value
 	var err error
 
-	switch {
-	case strings.HasPrefix(source, MapPrefix):
-		val, err = inter.Eval("Map")
-	case strings.HasPrefix(source, ReducePrefix):
-		val, err = inter.Eval("Reduce")
-	case strings.HasPrefix(source, UpdatePrefix):
-		val, err = inter.Eval("Update")
-	case strings.HasPrefix(source, FilterPrefix):
-		val, err = inter.Eval("Filter")
-	case strings.HasPrefix(source, ValidatePrefix):
-		val, err = inter.Eval("Validate")
+	for _, fnName := range FunctionNames {
+		if strings.HasPrefix(source, "func "+fnName) {
+			val, err = inter.Eval(fnName)
+			break
+		}
 	}
 
 	if err != nil {
@@ -79,7 +65,7 @@ func Compile[T any](source string) (T, error) {
 
 	fn, ok := val.Interface().(T)
 	if !ok {
-		return fn, err
+		return fn, fmt.Errorf("failed to convert function to type")
 	}
 
 	return fn, nil

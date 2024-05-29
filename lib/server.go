@@ -4,75 +4,90 @@ import (
 	"strings"
 )
 
+type DesignDocument struct {
+	filters  map[string]FilterFunction
+	views    map[string]ViewFunction
+	updates  map[string]UpdateFunction
+	rewrites map[string]RewriteFunction
+	validate ValidateFunction
+}
+
 type QueryServer struct {
-	functions []MapFunction
+	maps    []MapFunction
+	reduces []ReduceFunction
+	designs map[string]DesignDocument
 }
 
 func NewQueryServer() *QueryServer {
 	return &QueryServer{
-		functions: []MapFunction{},
+		maps:    []MapFunction{},
+		reduces: []ReduceFunction{},
+		designs: map[string]DesignDocument{},
 	}
 }
 
 func (qs *QueryServer) Reset() {
-	qs.functions = []MapFunction{}
+	qs.maps = []MapFunction{}
+	qs.reduces = []ReduceFunction{}
+
 	Respond(true)
 }
 
 func (qs *QueryServer) AddFun(source string) {
-	var fn interface{}
-	var err error
-
 	if strings.HasPrefix(source, "func Map") {
-		fn, err = Compile[MapFunction](source)
+		fn, err := Compile[MapFunction](source)
+
+		if err != nil {
+			Respond([]string{"error", "invalid_function", err.Error()})
+			return
+		}
+
+		qs.maps = append(qs.maps, fn)
 	} else if strings.HasPrefix(source, "func Reduce") {
-		fn, err = Compile[ReduceFunction](source)
+		fn, err := Compile[ReduceFunction](source)
+
+		if err != nil {
+			Respond([]string{"error", "invalid_function", err.Error()})
+			return
+		}
+
+		qs.reduces = append(qs.reduces, fn)
 	} else {
-		Respond([]string{"error", "invalid_function_type", "Invalid function type"})
+		Respond([]string{"error", "invalid_function", "function must be either a map or reduce function"})
 		return
-	}
-
-	if err != nil {
-		Respond([]string{"error", "compilation_error", err.Error()})
-		return
-	}
-
-	if fn, ok := fn.(MapFunction); ok {
-		qs.functions = append(qs.functions, fn)
 	}
 
 	Respond(true)
 }
 
 func (qs *QueryServer) AddLib() {
+	Log("Libraries are not supported")
 	Respond(true)
 }
 
 func (qs *QueryServer) MapDoc(doc Document) {
-	var results [][][]any
+	var results [][][2]any
 
-	for _, fn := range qs.functions {
-		Emitted = [][]any{}
-		fn(doc)
-		results = append(results, Emitted)
+	for _, fn := range qs.maps {
+		results = append(results, fn(MapInput{Doc: doc}))
 	}
 
 	Respond(results)
 }
 
 func (qs *QueryServer) Reduce(sources []string, keys []any, values []any, rereduce bool) {
-	var reductions []any
+	var results []any
 
 	for _, source := range sources {
 		fn, err := Compile[ReduceFunction](source)
 
 		if err != nil {
-			reductions = append(reductions, nil)
+			results = append(results, nil)
 			continue
 		}
 
-		reductions = append(reductions, fn(keys, values, rereduce))
+		results = append(results, fn(ReduceInput{keys, values, rereduce}))
 	}
 
-	Respond([]any{true, reductions})
+	Respond([]any{true, results})
 }
