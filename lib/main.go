@@ -13,15 +13,19 @@ func main() {
 
 	dispatch := map[string]func(args ...any){
 		"ddoc": func(args ...any) {
-			// shows - deprecated
-			// lists - deprecated
-			// updates
-			// filters
-			// views
-			// validate_doc_update
-			// rewrites
-
-			// ["ddoc","new","_design/go-2",{"_id":"_design/go-2","_rev":"3-2f8240d2cdd7985df6381eca0c10d62b","filters":{"filter":"func Filter(doc couchgo.Document) { return false }"},"language":"go","views":{"view-number-one":{"map":"func Map(doc couchgo.Document) {  }"},"view-number-two":{"map":"func Map(doc couchgo.Document) { \n    if doc[\"type\"] == \"post\" {\n        couchgo.Emit(doc[\"_id\"], 1)\n    }\n}","reduce":"func Reduce(keys []any, values []any, rereduce bool) any {\n\tout := 0.0\n\n\tfor _, value := range values {\n\t\tout += value.(float64)\n\t}\n\n\treturn out\n}"}}}]
+			if args[0].(string) == "new" {
+				docId := args[1].(string)
+				doc := args[2].(map[string]any)
+				server.RegisterDesign(docId, doc)
+			} else {
+				docId := args[0].(string)
+				var fnPath []string
+				for _, path := range args[1].([]any) {
+					fnPath = append(fnPath, path.(string))
+				}
+				fnArgs := args[2].([]any)
+				server.ExecuteDesign(docId, fnPath, fnArgs)
+			}
 		},
 		"reset": func(args ...any) {
 			server.Reset()

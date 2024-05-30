@@ -77,14 +77,7 @@ type FilterInput struct {
 	Req Request
 }
 
-type FilterOutput bool
-
-type ViewInput struct {
-	Doc Document
-	Req Request
-}
-
-type ViewOutput [][2]any
+type FilterOutput = bool
 
 type ValidateInput struct {
 	NewDoc  Document
@@ -93,7 +86,7 @@ type ValidateInput struct {
 	SecObj  SecurityObject
 }
 
-type ValidateOutput error
+type ValidateOutput = error
 
 type RewriteInput struct {
 	Req Request
@@ -101,7 +94,7 @@ type RewriteInput struct {
 
 type RewriteOutput struct {
 	Path    string
-	Query   []string
+	Query   map[string]string
 	Headers map[string]string
 	Method  string
 	Body    string
@@ -112,6 +105,5 @@ type MapFunction = func(MapInput) MapOutput
 type ReduceFunction = func(ReduceInput) ReduceOutput
 type UpdateFunction = func(UpdateInput) UpdateOutput
 type FilterFunction = func(FilterInput) FilterOutput
-type ViewFunction = func(ViewInput) ViewOutput
 type ValidateFunction = func(ValidateInput) ValidateOutput
 type RewriteFunction = func(RewriteInput) RewriteOutput

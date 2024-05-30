@@ -25,8 +25,6 @@ func init() {
 		"UpdateOutput":        reflect.ValueOf((*UpdateOutput)(nil)),
 		"FilterInput":         reflect.ValueOf((*FilterInput)(nil)),
 		"FilterOutput":        reflect.ValueOf((*FilterOutput)(nil)),
-		"ViewInput":           reflect.ValueOf((*ViewInput)(nil)),
-		"ViewOutput":          reflect.ValueOf((*ViewOutput)(nil)),
 		"ValidateInput":       reflect.ValueOf((*ValidateInput)(nil)),
 		"ValidateOutput":      reflect.ValueOf((*ValidateOutput)(nil)),
 		"RewriteInput":        reflect.ValueOf((*RewriteInput)(nil)),
