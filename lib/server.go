@@ -6,8 +6,7 @@ import (
 )
 
 type DesignDocument struct {
-	maps     map[string]MapFunction
-	reduces  map[string]ReduceFunction
+	views    map[string]MapFunction
 	filters  map[string]FilterFunction
 	updates  map[string]UpdateFunction
 	rewrite  RewriteFunction
@@ -28,16 +27,16 @@ func NewQueryServer() *QueryServer {
 	}
 }
 
-func (qs *QueryServer) Reset() {
+func (qs *QueryServer) Reset(cmd *ResetCommand) {
 	qs.maps = []MapFunction{}
 	qs.reduces = []ReduceFunction{}
 
 	Respond(true)
 }
 
-func (qs *QueryServer) AddFun(source string) {
-	if strings.HasPrefix(source, "func Map") {
-		fn, err := Compile[MapFunction](source)
+func (qs *QueryServer) AddFun(cmd *AddFunCommand) {
+	if strings.HasPrefix(cmd.Source, "func Map") {
+		fn, err := Compile[MapFunction](cmd.Source)
 
 		if err != nil {
 			Respond([]string{"error", "invalid_function", err.Error()})
@@ -45,8 +44,8 @@ func (qs *QueryServer) AddFun(source string) {
 		}
 
 		qs.maps = append(qs.maps, fn)
-	} else if strings.HasPrefix(source, "func Reduce") {
-		fn, err := Compile[ReduceFunction](source)
+	} else if strings.HasPrefix(cmd.Source, "func Reduce") {
+		fn, err := Compile[ReduceFunction](cmd.Source)
 
 		if err != nil {
 			Respond([]string{"error", "invalid_function", err.Error()})
@@ -62,25 +61,25 @@ func (qs *QueryServer) AddFun(source string) {
 	Respond(true)
 }
 
-func (qs *QueryServer) AddLib() {
+func (qs *QueryServer) AddLib(cmd *AddLibCommand) {
 	Log("Libraries are not supported")
 	Respond(true)
 }
 
-func (qs *QueryServer) MapDoc(doc Document) {
+func (qs *QueryServer) MapDoc(cmd *MapDocCommand) {
 	var results [][][2]any
 
 	for _, fn := range qs.maps {
-		results = append(results, fn(MapInput{Doc: doc}))
+		results = append(results, fn(MapInput{cmd.Doc}))
 	}
 
 	Respond(results)
 }
 
-func (qs *QueryServer) Reduce(sources []string, keys []any, values []any, rereduce bool) {
+func (qs *QueryServer) Reduce(cmd *ReduceCommand) {
 	var results []any
 
-	for _, source := range sources {
+	for _, source := range cmd.Sources {
 		fn, err := Compile[ReduceFunction](source)
 
 		if err != nil {
@@ -88,7 +87,7 @@ func (qs *QueryServer) Reduce(sources []string, keys []any, values []any, reredu
 			continue
 		}
 
-		results = append(results, fn(ReduceInput{keys, values, rereduce}))
+		results = append(results, fn(ReduceInput{cmd.Keys, cmd.Values, cmd.Rereduce}))
 	}
 
 	Respond([]any{true, results})
@@ -109,69 +108,51 @@ func (qs *QueryServer) ProcessDesign(doc map[string]any, path string, compiler f
 	}
 }
 
-func (qs *QueryServer) RegisterDesign(docId string, doc map[string]any) {
-	maps := make(map[string]MapFunction)
-	reduces := make(map[string]ReduceFunction)
+func (qs *QueryServer) NewDesign(cmd *NewDesignCommand) {
+	views := make(map[string]MapFunction)
 	filters := make(map[string]FilterFunction)
 	updates := make(map[string]UpdateFunction)
 	var rewrite RewriteFunction
 	var validate ValidateFunction
 
-	if doc["views"] != nil {
-		for name, view := range doc["views"].(map[string]any) {
-			if view, ok := view.(map[string]any); ok {
-				if source, ok := view["map"].(string); ok {
-					fn, err := Compile[MapFunction](source)
+	for name, view := range cmd.Doc["views"].(map[string]any) {
+		if view, ok := view.(map[string]any); ok {
+			if source, ok := view["map"].(string); ok {
+				fn, err := Compile[MapFunction](source)
 
-					if err != nil {
-						Log(fmt.Sprintf("Failed to compile map function: %s", name))
-						continue
-					}
-
-					maps[name] = fn
+				if err != nil {
+					Log(fmt.Sprintf("Failed to compile map function: %s", name))
+					continue
 				}
 
-				if source, ok := view["reduce"].(string); ok {
-					fn, err := Compile[ReduceFunction](source)
-
-					if err != nil {
-						Log(fmt.Sprintf("Failed to compile reduce function: %s", name))
-						continue
-					}
-
-					reduces[name] = fn
-				}
+				views[name] = fn
 			}
 		}
 	}
 
-	if doc["filters"] != nil {
-		for name, source := range doc["filters"].(map[string]any) {
-			fn, err := Compile[FilterFunction](source.(string))
+	for name, source := range cmd.Doc["filters"].(map[string]any) {
+		fn, err := Compile[FilterFunction](source.(string))
 
-			if err != nil {
-				Log(fmt.Sprintf("Failed to compile filter function: %s", name))
-				continue
-			}
-
-			filters[name] = fn
+		if err != nil {
+			Log(fmt.Sprintf("Failed to compile filter function: %s", name))
+			continue
 		}
+
+		filters[name] = fn
 	}
 
-	if doc["updates"] != nil {
-		for name, source := range doc["updates"].(map[string]any) {
-			fn, err := Compile[UpdateFunction](source.(string))
+	for name, source := range cmd.Doc["updates"].(map[string]any) {
+		fn, err := Compile[UpdateFunction](source.(string))
 
-			if err != nil {
-				Log(fmt.Sprintf("Failed to compile update function: %s", name))
-				continue
-			}
-
-			updates[name] = fn
+		if err != nil {
+			Log(fmt.Sprintf("Failed to compile update function: %s", name))
+			continue
 		}
+
+		updates[name] = fn
 	}
 
-	if source, ok := doc["rewrites"].(string); ok {
+	if source, ok := cmd.Doc["rewrites"].(string); ok {
 		fn, err := Compile[RewriteFunction](source)
 
 		if err != nil {
@@ -181,7 +162,7 @@ func (qs *QueryServer) RegisterDesign(docId string, doc map[string]any) {
 		rewrite = fn
 	}
 
-	if source, ok := doc["validate_doc_update"].(string); ok {
+	if source, ok := cmd.Doc["validate_doc_update"].(string); ok {
 		fn, err := Compile[ValidateFunction](source)
 
 		if err != nil {
@@ -191,9 +172,8 @@ func (qs *QueryServer) RegisterDesign(docId string, doc map[string]any) {
 		validate = fn
 	}
 
-	qs.designs[docId] = DesignDocument{
-		maps,
-		reduces,
+	qs.designs[cmd.DocId] = DesignDocument{
+		views,
 		filters,
 		updates,
 		rewrite,
@@ -203,34 +183,32 @@ func (qs *QueryServer) RegisterDesign(docId string, doc map[string]any) {
 	Respond(true)
 }
 
-func (qs *QueryServer) ExecuteDesign(docId string, path []string, args []any) {
-	if path[0] == "filters" {
-		fn := qs.designs[docId].filters[path[1]]
-		req := Request{} // @todo: fill in request
-		results := make([]bool, 0)
+func (qs *QueryServer) ViewDesign(cmd *ViewDesignCommand) {
+	fn := qs.designs[cmd.DocId].views[cmd.FnPth[1]]
+	results := make([]bool, 0)
 
-		for _, doc := range args[0].([]any) {
-			results = append(results, fn(FilterInput{doc.(Document), req}))
-		}
-
-		Respond([]any{true, results})
+	for _, doc := range cmd.Docs {
+		results = append(results, len(fn(MapInput{doc})) > 0)
 	}
 
-	if path[0] == "views" && path[2] == "map" {
-		fn := qs.designs[docId].maps[path[1]]
-		results := make([]bool, 0)
+	Respond([]any{true, results})
+}
 
-		for _, doc := range args[0].([]any) {
-			out := fn(MapInput{doc.(Document)})
-			results = append(results, len(out) > 0)
-		}
+func (qs *QueryServer) FilterDesign(cmd *FilterDesignCommand) {
+	fn := qs.designs[cmd.DocId].filters[cmd.FnPth[1]]
+	results := make([]bool, 0)
 
-		Respond([]any{true, results})
+	for _, doc := range cmd.Docs {
+		results = append(results, fn(FilterInput{doc, cmd.Req}))
 	}
 
-	// rewrite
-	// updates
-	// validate_doc_update
+	Respond([]any{true, results})
+}
 
-	Respond([]any{"error", "invalid_path"})
+func (qs *QueryServer) UpdateDesign(cmd *UpdateDesignCommand) {
+	fmt.Printf("Command: %v\n", cmd)
+}
+
+func (qs *QueryServer) ValidateDesign(cmd *ValidateDesignCommand) {
+	fmt.Printf("Command: %v\n", cmd)
 }

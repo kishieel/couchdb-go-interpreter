@@ -11,80 +11,43 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	server := NewQueryServer()
 
-	dispatch := map[string]func(args ...any){
-		"ddoc": func(args ...any) {
-			if args[0].(string) == "new" {
-				docId := args[1].(string)
-				doc := args[2].(map[string]any)
-				server.RegisterDesign(docId, doc)
-			} else {
-				docId := args[0].(string)
-				var fnPath []string
-				for _, path := range args[1].([]any) {
-					fnPath = append(fnPath, path.(string))
-				}
-				fnArgs := args[2].([]any)
-				server.ExecuteDesign(docId, fnPath, fnArgs)
-			}
-		},
-		"reset": func(args ...any) {
-			server.Reset()
-		},
-		"add_fun": func(args ...any) {
-			source := args[0].(string)
-			server.AddFun(source)
-		},
-		"add_lib": func(args ...any) {
-			server.AddLib()
-		},
-		"map_doc": func(args ...any) {
-			doc := args[0].(Document)
-			server.MapDoc(doc)
-		},
-		"reduce": func(args ...any) {
-			sources := make([]string, len(args[0].([]any)))
-			for i, source := range args[0].([]any) {
-				sources[i] = source.(string)
-			}
-
-			keyValues := args[1].([]any)
-			keys := make([]any, len(keyValues))
-			values := make([]any, len(keyValues))
-
-			for i, kv := range keyValues {
-				keys[i] = kv.([]any)[0]
-				values[i] = kv.([]any)[1]
-			}
-
-			server.Reduce(sources, keys, values, false)
-		},
-		"rereduce": func(args ...any) {
-			sources := make([]string, len(args[0].([]any)))
-			for i, source := range args[0].([]any) {
-				sources[i] = source.(string)
-			}
-
-			values := args[1].([]any)
-			server.Reduce(sources, nil, values, true)
-		},
-	}
-
 	for scanner.Scan() {
-		var message []any
+		var tmp []interface{}
 
-		if err := json.Unmarshal(scanner.Bytes(), &message); err != nil {
+		if err := json.Unmarshal(scanner.Bytes(), &tmp); err != nil {
 			Respond([]string{"error", "unnamed_error", err.Error()})
 		}
 
-		Log(message)
+		kind := GetCommandKind(tmp...)
 
-		command := message[0].(string)
-		arguments := message[1:]
-
-		if dispatch[command] != nil {
-			dispatch[command](arguments...)
-		} else {
-			Respond([]string{"error", "unknown_command", fmt.Sprintf("unknown command '%s'", command)})
+		factory, found := CommandRegistry[kind]
+		if !found {
+			Respond([]string{"error", "unknown_command", fmt.Sprintf("Unknown command type: %s", kind)})
+			continue
 		}
+
+		command := factory()
+		command.Parse(tmp...)
+
+		dispatcher, found := CommandDispatcher[kind]
+		if !found {
+			Respond([]string{"error", "unknown_command", fmt.Sprintf("Unknown command type: %s", kind)})
+			continue
+		}
+
+		dispatcher(server, command)
 	}
 }
+
+// ["reset", {"reduce_limit": true, "timeout": 5000}]
+// ["add_fun", "func Map(args couchgo.MapInput) couchgo.MapOutput {\n\tout := make([][2]any, 0)\n\tout = append(out, [2]any{args.Doc[\"_id\"], args.Doc[\"type\"]})\n\n\treturn out\n}"]
+// ["add_lib", {"utils": "exports.MAGIC = 42;"}]
+// ["map_doc", {"_id": "doc_id", "_rev": "doc_rev", "type": "post", "content": "hello world"}]
+// ["map_doc", {"_id": "doc_id", "_rev": "doc_rev", "type": "user", "name": "John Doe"}]
+// ["reduce", ["func Reduce(args couchgo.ReduceInput) couchgo.ReduceOutput {\n\tout := 0.0\n\n\tfor _, value := range args.Values {\n\t\tout += value.(float64)\n\t}\n\n\treturn out\n}"], [[[1, "699b"], 10], [[2, "c081"], 20], [[null, "foobar"], 3]]]
+// ["rereduce", ["func Reduce(args couchgo.ReduceInput) couchgo.ReduceOutput {\n\tout := 0.0\n\n\tfor _, value := range args.Values {\n\t\tout += value.(float64)\n\t}\n\n\treturn out\n}"], [10, 20, 3]]
+// ["ddoc", "new", "_design/myddoc", {"views": {"myview": {"map": "function(doc) { emit(doc._id, doc); }"}}}]
+// ["ddoc", "_design/myddoc", ["views", "myview", "map"], [{"_id": "doc_id", "_rev": "doc_rev", "type": "post", "content": "hello world"}]]
+// ["ddoc", "_design/myddoc", ["filters", "myfilter"], [{"_id": "doc_id", "_rev": "doc_rev", "type": "post"}], {"body": "", "cookie": {}, "form": {}, "headers": {}, "id": "doc_id", "info": {"db_name": "mydb"}, "method": "GET", "path": [], "peer": "", "query": {}, "secobj": {}, "userCtx": {"db": "mydb", "name": "myuser", "roles": []}, "uuid": "uuid"}]
+// ["ddoc", "_design/myddoc", ["updates", "myupdate"], [{"_id": "doc_id", "_rev": "doc_rev", "type": "post", "content": "hello world"}, {"body": "", "cookie": {}, "form": {}, "headers": {}, "id": "doc_id", "info": {"db_name": "mydb"}, "method": "GET", "path": [], "peer": "", "query": {}, "secobj": {}, "userCtx": {"db": "mydb", "name": "myuser", "roles": []}, "uuid": "uuid"}]]
+// ["ddoc", "_design/myddoc", ["validate_doc_update"], [{"_id": "doc_id"}, {"_id": "doc_id"}, {"name": "myuser", "roles": []}, {"db_name": "mydb"}]]
