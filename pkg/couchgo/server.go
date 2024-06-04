@@ -33,7 +33,6 @@ func (qs *QueryServer) Start() {
 			Respond([]string{"error", "unnamed_error", err.Error()})
 		}
 
-		Log(event)
 		kind := GetCommandKind(event...)
 
 		factory, found := CommandRegistry[kind]

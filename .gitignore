@@ -5,4 +5,4 @@
 # Temporary files
 tmp/
 example/*
-!example/docker-compose.yaml
+!deployments/docker-compose.yaml

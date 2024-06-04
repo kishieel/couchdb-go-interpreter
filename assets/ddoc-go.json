@@ -1,0 +1,24 @@
+{
+  "_id": "_design/ddoc-go",
+  "_rev": "82-7682cf0be7f0a707a6602f5e074ea573",
+  "views": {
+    "view-1": {
+      "map": "func Map(args couchgo.MapInput) couchgo.MapOutput {\n\tout := make([][2]any, 0)\n\tout = append(out, [2]any{args.Doc[\"_id\"], args.Doc[\"type\"]})\n\n\treturn out\n}"
+    },
+    "view-2": {
+      "map": "func Map(args couchgo.MapInput) couchgo.MapOutput {\n\tout := couchgo.MapOutput{}\n\tout = append(out, [2]interface{}{args.Doc[\"_id\"], 1})\n\tout = append(out, [2]interface{}{args.Doc[\"_id\"], 2})\n\tout = append(out, [2]interface{}{args.Doc[\"_id\"], 3})\n\t\n\treturn out\n}",
+      "reduce": "func Reduce(args couchgo.ReduceInput) couchgo.ReduceOutput {\n\tout := 0.0\n\n\tfor _, value := range args.Values {\n\t\tout += value.(float64)\n\t}\n\n\treturn out\n}"
+    },
+    "view-3": {
+      "map": "func Map(args couchgo.MapInput) couchgo.MapOutput {\n\tout := make([][2]any, 0)\n\tif args.Doc[\"updated\"] == true {\n\t\tout = append(out, [2]any{args.Doc[\"_id\"], nil})\n\t}\n\n\treturn out\n}"
+    }
+  },
+  "filters": {
+    "filter-1": "func Filter(args couchgo.FilterInput) couchgo.FilterOutput {\n\treturn args.Doc[\"type\"] == \"post\"\n}"
+  },
+  "updates": {
+    "update-1": "func Update(args couchgo.UpdateInput) couchgo.UpdateOutput {\n\tdoc := args.Doc\n\tif doc == nil {\n\t\tdoc = make(couchgo.Document)\n\t\tdoc[\"_id\"] = args.Req.Uuid\n\t}\n\t\n\tdoc[\"type\"] = \"user\"\n\tdoc[\"username\"] = \"test\"\n\tdoc[\"email\"] = \"test\"\n\tdoc[\"updated\"] = true\n\tdoc[\"data\"] = args.Req.Body\n\n\treturn couchgo.UpdateOutput{doc, map[string]any{\"body\": \"Updated, ID:\" + args.Req.Uuid}}\n}"
+  },
+  "validate_doc_update": "func Validate(args couchgo.ValidateInput) couchgo.ValidateOutput {\n\tif args.NewDoc[\"type\"] == \"post\" {\n\t\tif args.NewDoc[\"title\"] == nil || args.NewDoc[\"content\"] == nil {\n\t\t\treturn couchgo.ForbiddenError{Message: \"Title and content are required\"}\n\t\t}\n\n\t\treturn nil\n\t}\n\n\tif args.NewDoc[\"type\"] == \"comment\" {\n\t\tif args.NewDoc[\"post\"] == nil || args.NewDoc[\"author\"] == nil || args.NewDoc[\"content\"] == nil {\n\t\t\treturn couchgo.ForbiddenError{Message: \"Post, author, and content are required\"}\n\t\t}\n\n\t\treturn nil\n\t}\n\n\tif args.NewDoc[\"type\"] == \"user\" {\n\t\tif args.NewDoc[\"username\"] == nil || args.NewDoc[\"email\"] == nil {\n\t\t\treturn couchgo.ForbiddenError{Message: \"Username and email are required\"}\n\t\t}\n\n\t\treturn nil\n\t}\n\n\treturn couchgo.ForbiddenError{Message: \"Invalid document type\"}\n}",
+  "language": "go"
+}

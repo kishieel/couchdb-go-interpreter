@@ -1,0 +1,24 @@
+{
+  "_id": "_design/ddoc-js",
+  "_rev": "19-98b5c168a8ad94c714691c8809d54f0d",
+  "views": {
+    "view-1": {
+      "map": "function(doc) {\n\temit(doc._id, doc.type);\n}"
+    },
+    "view-2": {
+      "map": "function(doc) {\n\temit(doc._id, 1);\n\temit(doc._id, 2);\n\temit(doc._id, 3);\n}",
+      "reduce": "function(keys, values, rereduce) {\n\treturn sum(values);\n}"
+    },
+    "view-3": {
+      "map": "function(doc) {\n\tif (doc.updated) {\n\t\temit(doc._id, null);\n\t}\n}"
+    }
+  },
+  "filters": {
+    "filter-1": "function(doc) {\n\treturn doc.type === \"post\";\n}"
+  },
+  "updates": {
+    "update-1": "function(doc, req) {\n\tdoc = doc || {_id: req[\"uuid\"]};\n\tdoc.type = \"user\";\n\tdoc.username = \"test\";\n\tdoc.email = \"test\";\n\tdoc.updated = true;\n\tdoc.data = req.body;\n\treturn [doc, {body: \"Updated, ID:\" + req[\"uuid\"]}];\n}"
+  },
+  "validate_doc_update": "function(newDoc, oldDoc, userCtx, secObj) {\n\tif (newDoc.type === \"post\") {\n\t\tif (!newDoc.title || !newDoc.content) {\n\t\t\tthrow ({forbidden: \"Title and content are required\"});\n\t\t}\n\n\t\treturn;\n\t}\n\t\n\tif (newDoc.type === \"comment\") {\n\t\tif (!newDoc.post || !newDoc.author || !newDoc.content) {\n\t\t\tthrow ({forbidden: \"Post, author, and content are required\"});\n\t\t}\n\n\t\treturn;\n\t}\n\t\n\tif (newDoc.type === \"user\") {\n\t\tif (!newDoc.username || !newDoc.email) {\n\t\t\tthrow ({forbidden: \"Username and email are required\"});\n\t\t}\n\n\t\treturn;\n\t}\n\t\n\tthrow ({forbidden: \"Invalid document type\"});\n}",
+  "language": "javascript"
+}

@@ -5,7 +5,8 @@ It is a drop-in replacement for the JavaScript implementation that ships with Co
 
 ## Usage
 
-To use the CouchDB Query Server Go, you need to add `couchgo` executable to the CouchDB and add the following environment variable:
+To use the CouchDB Query Server Go, you need to add `couchgo` executable to the CouchDB and add the following
+environment variable:
 
 ```shell
 export COUCHDB_QUERY_SERVER_GO=/path/to/couchgo
@@ -48,23 +49,11 @@ It implements only minimal functionality without commands that are marked as dep
 go build -o ./bin/couchgo ./lib
 ```
 
-```shell
-# Views
-curl 'http://admin:admin@localhost:5984/posts/_design/go/_view/view-1'
-curl 'http://admin:admin@localhost:5984/posts/_design/go/_view/view-2'
-curl 'http://admin:admin@localhost:5984/posts/_design/go/_view/view-2?reduce=false'
+## Benchmarks
 
-# Filters
-curl 'http://admin:admin@localhost:5984/posts/_changes?filter=go/filter-1'
-curl 'http://admin:admin@localhost:5984/posts/_changes?filter=_view&view=go/view-1'
-curl 'http://admin:admin@localhost:5984/posts/_changes?filter=_view&view=go/view-2'
-
-# Updates
-curl -X POST 'http://admin:admin@localhost:5984/posts/_design/go/_update/update-1' -d '{"data": "test"}'
-curl -X POST 'http://admin:admin@localhost:5984/posts/_design/go/_update/update-1/70bf54067abb69a75e30ae5f8a0032f1' -d '{"data": "test"}'
-```
-
-## Todo
-
-- Improve types, create dedicated types instead of using `interface{}` everywhere
-- Improve command handling from stdin so query server can receive properly typed arguments
+| Test                  | CouchGO! |  CouchJS | Boost |
+|-----------------------|---------:|---------:|------:|
+| Indexing (100k docs)  | 141.713s | 421.529s | 2.97x |
+| Reducing (100k docs)  |   7672ms |  15642ms | 2.04x |
+| Filtering (100k docs) |  28.928s |  80.594s | 2.79x |
+| Updating (1k docs)    |   7.742s |   9.661s | 1.25x |
