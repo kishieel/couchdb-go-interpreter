@@ -58,6 +58,10 @@ curl 'http://admin:admin@localhost:5984/posts/_design/go/_view/view-2?reduce=fal
 curl 'http://admin:admin@localhost:5984/posts/_changes?filter=go/filter-1'
 curl 'http://admin:admin@localhost:5984/posts/_changes?filter=_view&view=go/view-1'
 curl 'http://admin:admin@localhost:5984/posts/_changes?filter=_view&view=go/view-2'
+
+# Updates
+curl -X POST 'http://admin:admin@localhost:5984/posts/_design/go/_update/update-1' -d '{"data": "test"}'
+curl -X POST 'http://admin:admin@localhost:5984/posts/_design/go/_update/update-1/70bf54067abb69a75e30ae5f8a0032f1' -d '{"data": "test"}'
 ```
 
 ## Todo
